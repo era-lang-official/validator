@@ -1,0 +1,176 @@
+fn val_parse_int(s: string) -> i64 {
+    let chars: Vec<char> = s.chars();
+    let mut num: i64 = 0;
+    let mut neg = false;
+    let mut i: usize = 0;
+    while i < chars.len() {
+        if i == 0 && chars[i] == '-' {
+            neg = true;
+            i += 1;
+            continue;
+        }
+        let code = chars[i] as i64;
+        if code >= 48 && code <= 57 {
+            num = (num * 10) + (code - 48);
+        }
+        i += 1;
+    }
+    if neg { return -num; }
+    return num;
+}
+// github.com/era-lang-official/validator
+// Declarative data and input validation engine
+
+fn val_str_find(s: string, sub: string) -> i64 {
+    let s_chars: Vec<char> = s.chars();
+    let sub_chars: Vec<char> = sub.chars();
+    if sub_chars.len() == 0 { return 0; }
+    if s_chars.len() < sub_chars.len() { return -1; }
+    let limit = (s_chars.len() - sub_chars.len()) + 1;
+    let mut i: usize = 0;
+    while i < limit {
+        let mut matched = true;
+        let mut j: usize = 0;
+        while j < sub_chars.len() {
+            if s_chars[i + j] != sub_chars[j] {
+                matched = false;
+                break;
+            }
+            j += 1;
+        }
+        if matched { return i as i64; }
+        i += 1;
+    }
+    return -1;
+}
+
+fn val_str_slice(s: string, start: usize, end: usize) -> string {
+    let s_chars: Vec<char> = s.chars();
+    let mut sb = StringBuilder::new();
+    let mut i = start;
+    let limit = if end > s_chars.len() { s_chars.len() } else { end };
+    while i < limit {
+        sb.append(s_chars[i].to_string());
+        i += 1;
+    }
+    return sb.to_string();
+}
+
+pub fn is_email(s: string) -> bool {
+    let at_pos = val_str_find(s.clone(), "@".to_string());
+    if at_pos <= 0 {
+        return false;
+    }
+    let domain = val_str_slice(s.clone(), (at_pos + 1) as usize, s.len());
+    let dot_pos = val_str_find(domain.clone(), ".".to_string());
+    if dot_pos <= 0 || (dot_pos as usize) >= (domain.len() - 1) {
+        return false;
+    }
+    return true;
+}
+
+pub fn is_numeric(s: string) -> bool {
+    if s.len() == 0 {
+        return false;
+    }
+    let chars: Vec<char> = s.chars();
+    let mut i: usize = 0;
+    while i < chars.len() {
+        let code = chars[i] as i64;
+        if i == 0 && (chars[i] == '-' || chars[i] == '+') {
+            i += 1;
+            continue;
+        }
+        if code < 48 || code > 57 {
+            return false;
+        }
+        i += 1;
+    }
+    return true;
+}
+
+pub fn is_alphanumeric(s: string) -> bool {
+    if s.len() == 0 {
+        return false;
+    }
+    let chars: Vec<char> = s.chars();
+    let mut i: usize = 0;
+    while i < chars.len() {
+        let code = chars[i] as i64;
+        let is_digit = code >= 48 && code <= 57;
+        let is_upper = code >= 65 && code <= 90;
+        let is_lower = code >= 97 && code <= 122;
+        if !is_digit && !is_upper && !is_lower {
+            return false;
+        }
+        i += 1;
+    }
+    return true;
+}
+
+pub fn min_length(s: string, min: usize) -> bool {
+    return s.len() >= min;
+}
+
+pub fn max_length(s: string, max: usize) -> bool {
+    return s.len() <= max;
+}
+
+pub fn in_range(val: i64, min: i64, max: i64) -> bool {
+    return val >= min && val <= max;
+}
+
+pub fn is_ipv4(s: string) -> bool {
+    let parts = s.split(".");
+    if parts.len() != 4 {
+        return false;
+    }
+    let mut i: usize = 0;
+    while i < 4 {
+        let p: string = parts[i].clone();
+        if !is_numeric(p.clone()) {
+            return false;
+        }
+        let octet = val_parse_int(p);
+        if octet < 0 || octet > 255 {
+            return false;
+        }
+        i += 1;
+    }
+    return true;
+}
+
+pub struct SchemaValidator {
+    pub errors_count: usize,
+    pub errors: Vec<string>,
+}
+
+impl SchemaValidator {
+    pub fn new() -> SchemaValidator {
+        return SchemaValidator {
+            errors_count: 0,
+            errors: Vec::<string>::new(),
+        };
+    }
+
+    pub fn require_email(&mut self, field: string, val: string) {
+        if !is_email(val) {
+            self.errors.push(f"Field '{field}' must be a valid email address");
+            self.errors_count += 1;
+        }
+    }
+
+    pub fn require_min_len(&mut self, field: string, val: string, min: usize) {
+        if !min_length(val, min) {
+            self.errors.push(f"Field '{field}' must be at least {min} characters");
+            self.errors_count += 1;
+        }
+    }
+
+    pub fn require_numeric(&mut self, field: string, val: string) {
+        if !is_numeric(val) {
+            self.errors.push(f"Field '{field}' must be numeric");
+            self.errors_count += 1;
+        }
+    }
+}
